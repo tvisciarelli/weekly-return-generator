@@ -17,14 +17,35 @@ def find_date_header(df: pd.DataFrame) -> tuple[int, int]:
     return row, column
 
 
+def find_dates(df: pd.DataFrame) -> tuple[int, int, list]:
+    """Find the Date Header and return its location and the dates to its right. """
+    locations = df.eq("Date").stack()
+
+    if locations.empty:
+        raise ValueError("Could not find 'Date' in the planning sheet.")
+    
+    row, column = locations[locations].index[0]
+
+    date_values = df.iloc[row, column+1:]
+
+    dates = pd.to_datetime(
+        date_values,
+        errors='coerce'
+    ).dropna().tolist()
+
+    return row, column, dates
+
+
 def main():
     file_path = Path("data/20.4045 Staff Planning 2027.xlsx")
 
     df = load_planning_sheet(file_path)
 
-    date_row, date_column = find_date_header(df)
+    date_row, date_column, dates = find_dates(df)
 
     print(f"Date header found at row {date_row}, column {date_column}")
+    print(f"Found {len(dates)} dates:")
+    print(dates)
 
 if __name__ == "__main__":
     main()
