@@ -9,14 +9,6 @@ def load_planning_sheet(file_path: Path) -> pd.DataFrame:
         header=None
     )
 
-def find_date_header(df: pd.DataFrame) -> tuple[int, int]:
-    """Find the 'Date' cell and return its row and column."""
-    locations = df.eq("Date").stack()
-
-    row, column = locations[locations].index[0]
-    return row, column
-
-
 def find_dates(df: pd.DataFrame) -> tuple[int, int, list]:
     """Find the Date Header and return its location and the dates to its right. """
     locations = df.eq("Date").stack()
@@ -92,8 +84,6 @@ def clean_staff(df,titles):
     )
 
     return df
-
-
 
 
 def main():
