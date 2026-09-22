@@ -68,6 +68,33 @@ def find_section_ranges(sections, df):
         
     return section_ranges
 
+def extract_section(df, section_range):
+    extract_df = df.iloc[section_range[0]+1:section_range[1],:].copy()
+    extract_df = extract_df.reset_index(drop=True)
+
+    return extract_df
+
+def clean_staff(df,titles):
+    df = df.dropna(axis=0,subset=[1,2,3])
+    df = df.drop([0,4],axis=1).reset_index(drop=True)
+
+    assert len(titles) == len(df.columns), (
+        f"Number of titles ({len(titles)}) does not match "
+        f"number of columns ({len(df.columns)})"
+    )
+
+    df.columns = titles
+
+    df = df.melt(
+        id_vars=titles[0:3],
+        var_name="Date",
+        value_name='Status'
+    )
+
+    return df
+
+
+
 
 def main():
     file_path = Path("data/20.4045 Staff Planning 2027.xlsx")
@@ -97,16 +124,18 @@ def main():
 
     #Filter the sections that we want to use:
     selected_sections = {
-        name: range
-        for name, range in section_ranges.items() if name in sections_to_process
+        name: section_range
+        for name, section_range in section_ranges.items() if name in sections_to_process
     }
 
-    print(f"Date header found at row {date_row}, column {date_column}")
-    print(f"Sections: {sections}")
-    print()
-    print(f"Section Ranges: {section_ranges}")
-    print()
-    print(f"Selected Sections: {selected_sections}")
+    staff_df = extract_section(df, selected_sections['Staff Planning'])
+
+    staff_titles = ['Role', 'Name', 'Company'] + dates
+
+    staff_df = clean_staff(staff_df,staff_titles)
+
+
+    print(staff_df.head(20))
 
 if __name__ == "__main__":
     main()
