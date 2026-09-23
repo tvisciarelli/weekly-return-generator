@@ -66,7 +66,7 @@ def extract_section(df, section_range):
 
     return extract_df
 
-def clean_staff(df,titles):
+def clean_section(df,titles):
     df = df.dropna(axis=0,subset=[1,2,3])
     df = df.drop([0,4],axis=1).reset_index(drop=True)
 
@@ -118,14 +118,16 @@ def main():
         for name, section_range in section_ranges.items() if name in sections_to_process
     }
 
-    staff_df = extract_section(df, selected_sections['Staff Planning'])
+    titles = ['ID_1', 'ID_2', 'ID_3'] + dates
+    processed_sections = {}
 
-    staff_titles = ['Role', 'Name', 'Company'] + dates
+    for section in sections_to_process:
+        df_section =  extract_section(df, selected_sections[section])
+        df_section = clean_section(df_section,titles)
+        processed_sections[section] = df_section
+    
 
-    staff_df = clean_staff(staff_df,staff_titles)
-
-
-    print(staff_df.head(20))
+    print(processed_sections.keys())
 
 if __name__ == "__main__":
     main()
