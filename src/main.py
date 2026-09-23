@@ -1,6 +1,20 @@
 from pathlib import Path
 import pandas as pd
 
+STAFF_RULES = {
+    "A": (None, None),
+    "WFH": (8, "Working from home"),
+    "1": (12, None),
+    "T": (12, None),
+    "2": (6, None)
+}
+
+EQUIPMENT_RULES = {
+    "1": ("x"),
+    "M": ("m"),
+    "S": ("s")
+}
+
 def load_planning_sheet(file_path: Path) -> pd.DataFrame:
     """"Load the General Planning sheet"""
     return pd.read_excel(
@@ -85,6 +99,36 @@ def clean_section(df,titles):
 
     return df
 
+def normalize_status(status):
+    """Normalize a raw status value."""
+    if pd.isna(status):
+        return None
+    
+    return str(status).strip().upper()
+    
+
+def apply_rules_staff(df):
+    """Apply Staff-specific status rules."""
+    def get_staff_rule(status):
+        status = normalize_status(status)
+        return STAFF_RULES.get(status, (None, None))
+    
+    df[["Hours", "Remark"]] = df["Status"].apply(
+        lambda status: pd.Series(get_staff_rule(status))
+    )
+
+    return df
+
+def apply_rules_equipment(df):
+    """Apply common equipment/plant status rules."""
+
+    def get_equipment_rule(status):
+        status = normalize_status(status)
+        return EQUIPMENT_RULES.get(status)
+
+    df["Processed_Status"] = df["Status"].apply(get_equipment_rule)
+
+    return df
 
 def main():
     file_path = Path("data/20.4045 Staff Planning 2027.xlsx")
@@ -124,10 +168,18 @@ def main():
     for section in sections_to_process:
         df_section =  extract_section(df, selected_sections[section])
         df_section = clean_section(df_section,titles)
+        if section == "Staff Planning":
+            df_section = apply_rules_staff(df_section)
+        else:
+            df_section = apply_rules_equipment(df_section)
+
         processed_sections[section] = df_section
+
+    
     
 
-    print(processed_sections.keys())
+    print(df_section["Status"].unique())
+    print(processed_sections["Project Equipment"][1100:1150])
 
 if __name__ == "__main__":
     main()
