@@ -1,6 +1,7 @@
 from pathlib import Path
 import pandas as pd
 
+###RULES AND INPUT###
 STAFF_RULES = {
     "A": (None, None),
     "WFH": (8, "Working from home"),
@@ -10,11 +11,19 @@ STAFF_RULES = {
 }
 
 EQUIPMENT_RULES = {
-    "1": ("x"),
-    "M": ("m"),
-    "S": ("s")
+    "1": "x",
+    "M": "m",
+    "S": "s"
 }
 
+week_start = pd.Timestamp("2027-05-24")
+week_dates = pd.date_range(start = week_start,
+                           periods=7,
+                           freq="D")
+
+
+
+###GENERAL FUNCTIONS###
 def load_planning_sheet(file_path: Path) -> pd.DataFrame:
     """"Load the General Planning sheet"""
     return pd.read_excel(
@@ -83,16 +92,17 @@ def extract_section(df, section_range):
 def clean_section(df,titles):
     df = df.dropna(axis=0,subset=[1,2,3])
     df = df.drop([0,4],axis=1).reset_index(drop=True)
-
+    df = df.copy()
+    df.insert(0, 'Source_Order', range(len(df)))
     assert len(titles) == len(df.columns), (
         f"Number of titles ({len(titles)}) does not match "
         f"number of columns ({len(df.columns)})"
     )
-
+        
     df.columns = titles
-
+    
     df = df.melt(
-        id_vars=titles[0:3],
+        id_vars=titles[0:4],
         var_name="Date",
         value_name='Status'
     )
@@ -106,7 +116,7 @@ def normalize_status(status):
     
     return str(status).strip().upper()
     
-
+### STAFF FUNCTIONS ####
 def apply_rules_staff(df):
     """Apply Staff-specific status rules."""
     def get_staff_rule(status):
@@ -119,6 +129,53 @@ def apply_rules_staff(df):
 
     return df
 
+def process_staff(df, section_range, titles, week_dates):
+    df_staff = extract_section(df,section_range)
+    df_staff = clean_section(df, titles)
+    df_staff = apply_rules_staff(df_staff)
+
+    df_staff = df_staff[df_staff["Date"].isin(week_dates)]
+
+    active = (
+        df_staff
+        .groupby(["Source_Order","ID_1","ID_2","ID_3"])["Hours"]
+        .transform(lambda x: x.notna().any())
+    )
+
+    df_staff = df_staff[active]
+
+    remarks = (
+            df_staff[df_staff["Remark"].notna()]
+            .groupby(["Source_Order","ID_1", "ID_2", "ID_3"])["Remark"]
+            .agg(lambda x: ", ".join(x.unique()))
+            .reset_index()
+    )
+
+    df_staff['Hours'] = df_staff['Hours'].astype('Int64')
+
+    df_staff = (df_staff
+                .pivot(
+                    index=['Source_Order','ID_1','ID_2','ID_3'],
+                    columns='Date',
+                    values='Hours')
+                .reindex(
+                    columns=week_dates)
+                .reset_index()
+                .sort_values("Source_Order"))
+
+    df_staff["Total Hours"] = df_staff[week_dates].sum(axis=1).astype('Int64')
+
+
+    df_staff = df_staff.merge(
+                remarks,
+                on=['Source_Order',"ID_1", "ID_2", "ID_3"],
+                how="left",
+                ).drop(columns='Source_Order')
+    
+    return df_staff
+
+
+### EQUIPMENT FUNCTIONS ###
 def apply_rules_equipment(df):
     """Apply common equipment/plant status rules."""
 
@@ -130,6 +187,8 @@ def apply_rules_equipment(df):
 
     return df
 
+
+### MAIN ###
 def main():
     file_path = Path("data/20.4045 Staff Planning 2027.xlsx")
 
@@ -162,24 +221,19 @@ def main():
         for name, section_range in section_ranges.items() if name in sections_to_process
     }
 
-    titles = ['ID_1', 'ID_2', 'ID_3'] + dates
-    processed_sections = {}
+    titles = ['Source_Order','ID_1', 'ID_2', 'ID_3'] + dates
 
-    for section in sections_to_process:
-        df_section =  extract_section(df, selected_sections[section])
-        df_section = clean_section(df_section,titles)
-        if section == "Staff Planning":
-            df_section = apply_rules_staff(df_section)
-        else:
-            df_section = apply_rules_equipment(df_section)
+    # Process Staff #
+    staff_week = process_staff(
+        df,
+        selected_sections['Staff Planning'],
+        titles,
+        week_dates
+    )
+      
 
-        processed_sections[section] = df_section
-
-    
-    
-
-    print(df_section["Status"].unique())
-    print(processed_sections["Project Equipment"][1100:1150])
+    print(staff_week.head())
+    print(staff_week.columns)
 
 if __name__ == "__main__":
     main()
