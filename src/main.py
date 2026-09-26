@@ -16,7 +16,7 @@ EQUIPMENT_RULES = {
     "S": "s"
 }
 
-week_start = pd.Timestamp("2027-05-24")
+week_start = pd.Timestamp("2027-06-14")
 week_dates = pd.date_range(start = week_start,
                            periods=7,
                            freq="D")
@@ -131,7 +131,7 @@ def apply_rules_staff(df):
 
 def process_staff(df, section_range, titles, week_dates):
     df_staff = extract_section(df,section_range)
-    df_staff = clean_section(df, titles)
+    df_staff = clean_section(df_staff, titles)
     df_staff = apply_rules_staff(df_staff)
 
     df_staff = df_staff[df_staff["Date"].isin(week_dates)]
@@ -187,6 +187,46 @@ def apply_rules_equipment(df):
 
     return df
 
+def process_equipment(df, section_range, titles, week_dates):
+    df_equipment = extract_section(df,section_range)
+    df_equipment = clean_section(df_equipment, titles)
+    df_equipment = apply_rules_equipment(df_equipment)
+
+    df_equipment = df_equipment[df_equipment["Date"].isin(week_dates)]
+
+    active = (
+        df_equipment
+        .groupby(["Source_Order","ID_1","ID_2","ID_3"])["Processed_Status"]
+        .transform(lambda x: x.notna().any())
+    )
+
+    df_equipment = df_equipment[active]
+
+    df_equipment = (df_equipment
+                .pivot(
+                    index=['Source_Order','ID_1','ID_2','ID_3'],
+                    columns='Date',
+                    values="Processed_Status")
+                .reindex(
+                    columns=week_dates)
+                .reset_index()
+                .sort_values("Source_Order")
+                .drop(columns='Source_Order'))
+    
+    df_equipment["Standby Days"] = (
+        df_equipment[week_dates].eq("s").sum(axis=1)
+    )
+
+    df_equipment["Mob/Demob"] = (
+        df_equipment[week_dates].eq("m").sum(axis=1)
+    )
+
+    df_equipment["Working Days"] = (
+        df_equipment[week_dates].eq("x").sum(axis=1)
+    )
+    
+    return df_equipment
+
 
 ### MAIN ###
 def main():
@@ -230,10 +270,33 @@ def main():
         titles,
         week_dates
     )
-      
+    
+    # Process Marine Equipment #
+    marine_week = process_equipment(
+        df,
+        selected_sections["Marine Equipment Planning"],
+        titles,
+        week_dates
+    )
 
-    print(staff_week.head())
-    print(staff_week.columns)
+    # Process Project Equipment #
+    project_week = process_equipment(
+        df,
+        selected_sections['Project Equipment'],
+        titles,
+        week_dates
+    )
+
+    #Process Land Based Equipment #
+    land_week = process_equipment(
+        df,
+        selected_sections['Land Based Equipment Planning'],
+        titles,
+        week_dates
+    )
+
+    print(land_week.head())
+    #print(marine_week.columns)
 
 if __name__ == "__main__":
     main()
