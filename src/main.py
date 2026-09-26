@@ -1,6 +1,26 @@
 from pathlib import Path
 import pandas as pd
 
+###INITIAL REPORTING DATE###
+week_start = pd.Timestamp("2027-06-14")
+week_dates = pd.date_range(start = week_start,
+                           periods=7,
+                           freq="D")
+
+### SECTIONS IN THE FILE AND SECTIONS TO PROCESS ###
+section_names = ["Holidays",
+                     "Main Activities Planning",
+                     "Staff Planning","Accommodation Planning",
+                     "Marine Equipment Planning",
+                     "Project Equipment",
+                     "Land Based Equipment Planning",
+                     "Activities Planning"]
+    
+sections_to_process = ["Staff Planning",
+                           "Marine Equipment Planning",
+                           "Project Equipment",
+                           "Land Based Equipment Planning"]
+
 ###RULES AND INPUT###
 STAFF_RULES = {
     "A": (None, None),
@@ -16,14 +36,8 @@ EQUIPMENT_RULES = {
     "S": "s"
 }
 
-week_start = pd.Timestamp("2027-06-14")
-week_dates = pd.date_range(start = week_start,
-                           periods=7,
-                           freq="D")
-
-
-
 ###GENERAL FUNCTIONS###
+"""Loads Planning File"""
 def load_planning_sheet(file_path: Path) -> pd.DataFrame:
     """"Load the General Planning sheet"""
     return pd.read_excel(
@@ -32,8 +46,8 @@ def load_planning_sheet(file_path: Path) -> pd.DataFrame:
         header=None
     )
 
+"""Find the Date Header and return its location and the dates to its right. """
 def find_dates(df: pd.DataFrame) -> tuple[int, int, list]:
-    """Find the Date Header and return its location and the dates to its right. """
     locations = df.eq("Date").stack()
 
     if locations.empty:
@@ -50,9 +64,8 @@ def find_dates(df: pd.DataFrame) -> tuple[int, int, list]:
 
     return row, column, dates
 
-
+""""Find the row position of each known section."""
 def find_sections(df: pd.DataFrame,section_names:list[str]) -> dict[str,int]:
-    """"Find the row position of each known section."""
     sections ={}
 
     for section in section_names:
@@ -66,8 +79,8 @@ def find_sections(df: pd.DataFrame,section_names:list[str]) -> dict[str,int]:
     
     return sections
 
+""""Find the range of each known section."""
 def find_section_ranges(sections, df):
-    """"Find the range of each known section."""
     section_ranges = {}
 
     sections = list(sections.items())
@@ -83,12 +96,14 @@ def find_section_ranges(sections, df):
         
     return section_ranges
 
+"""Extracts each of the sections based on the range"""
 def extract_section(df, section_range):
     extract_df = df.iloc[section_range[0]+1:section_range[1],:].copy()
     extract_df = extract_df.reset_index(drop=True)
 
     return extract_df
 
+"""General Cleanning of the Section"""
 def clean_section(df,titles):
     df = df.dropna(axis=0,subset=[1,2,3])
     df = df.drop([0,4],axis=1).reset_index(drop=True)
@@ -109,16 +124,16 @@ def clean_section(df,titles):
 
     return df
 
+"""Normalize a raw status value"""
 def normalize_status(status):
-    """Normalize a raw status value."""
     if pd.isna(status):
         return None
     
     return str(status).strip().upper()
     
 ### STAFF FUNCTIONS ####
+"""Apply Staff-specific status rules."""
 def apply_rules_staff(df):
-    """Apply Staff-specific status rules."""
     def get_staff_rule(status):
         status = normalize_status(status)
         return STAFF_RULES.get(status, (None, None))
@@ -129,6 +144,7 @@ def apply_rules_staff(df):
 
     return df
 
+"""Process Staff Section to get final output"""
 def process_staff(df, section_range, titles, week_dates):
     df_staff = extract_section(df,section_range)
     df_staff = clean_section(df_staff, titles)
@@ -176,9 +192,9 @@ def process_staff(df, section_range, titles, week_dates):
 
 
 ### EQUIPMENT FUNCTIONS ###
+"""Apply common equipment/plant status rules."""
 def apply_rules_equipment(df):
-    """Apply common equipment/plant status rules."""
-
+    
     def get_equipment_rule(status):
         status = normalize_status(status)
         return EQUIPMENT_RULES.get(status)
@@ -187,6 +203,7 @@ def apply_rules_equipment(df):
 
     return df
 
+"""Process equipment/plant sections"""
 def process_equipment(df, section_range, titles, week_dates):
     df_equipment = extract_section(df,section_range)
     df_equipment = clean_section(df_equipment, titles)
@@ -230,29 +247,17 @@ def process_equipment(df, section_range, titles, week_dates):
 
 ### MAIN ###
 def main():
+    #File path#
     file_path = Path("data/20.4045 Staff Planning 2027.xlsx")
-
+    
+    #Load df#
     df = load_planning_sheet(file_path)
-
+    
+    #Extract dates#
     date_row, date_column, dates = find_dates(df)
-
-    section_names = ["Holidays",
-                     "Main Activities Planning",
-                     "Staff Planning","Accommodation Planning",
-                     "Marine Equipment Planning",
-                     "Project Equipment",
-                     "Land Based Equipment Planning",
-                     "Activities Planning"]
     
-    sections_to_process = ["Staff Planning",
-                           "Marine Equipment Planning",
-                           "Project Equipment",
-                           "Land Based Equipment Planning"]
-    
-
-    
+    #Find and extract section ranges#    
     sections = find_sections(df, section_names)
-
     section_ranges = find_section_ranges(sections,df)
 
     #Filter the sections that we want to use:
