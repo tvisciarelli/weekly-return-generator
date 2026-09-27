@@ -19,13 +19,6 @@ file_path = Path("data/Staff Planning 2027.xlsx")
 #Template File Paht#
 template_path = Path("data/template_return.xlsx")
 
-#Output file#
-output_filename = f"weekly_return_{iso.year}_Wk{iso.week}.xlsx"
-output_path = Path("output")/output_filename
-shutil.copy2(template_path, output_path)
-
-
-
 ### SECTIONS IN THE FILE AND SECTIONS TO PROCESS ###
 section_names = ["Holidays",
                      "Main Activities Planning",
@@ -218,6 +211,32 @@ def format_data_area(ws,start_row,end_row,start_col,end_col,remarks_column = 13,
             end_row=row,
             end_column=remarks_merge_column
         )
+
+
+"""Function to create return file"""
+def create_return_file(staff_week,equipment_tables, week_dates):
+    # 1. Determine output filename
+    output_filename = f"weekly_return_{iso.year}_Wk{iso.week}.xlsx"
+    output_path = Path("output")/output_filename
+    
+    # 2. Copy template
+    shutil.copy2(template_path, output_path)
+
+    # 3. Open copied workbook
+    wb = load_workbook(template_path)
+    
+    # 4. Get worksheets
+    ws_personnel = wb["Personnel"]
+    ws_equipment = wb["Plant"]
+
+    # 5. Write personnel
+    write_personnel(ws_personnel,staff_week, week_dates)
+    
+    # 6. Write equipment
+    write_equpment(ws_equipment,equipment_tables,week_dates)
+
+    # 7. Save workbook
+    wb.save(output_path)
 
 
     
@@ -415,10 +434,9 @@ def write_equpment(ws, equipment_tables, week_dates):
             row=7,
             column=5+i
         ).value = date
-    """Add Table With Personnel"""
+    """Add Tables With Equipment"""
     equipment_start_row = 9
     equipment_start_column = 2
-    #last_equipment_row = equipment_start_row + len(staff_week)-1
     last_equipment_column = 16
     empty_row = 1
     current_row = equipment_start_row
@@ -506,15 +524,10 @@ def main():
         week_dates
     )
 
-    #Write Personnel to Template#
-    wb = load_workbook(template_path)
-    ws_personnel = wb["Personnel"]
-    ws_equipment = wb["Plant"]
+    equipment_tables = [marine_week,project_week,land_week]
+    
+    create_return_file(staff_week,equipment_tables, week_dates)
 
-    write_personnel(ws_personnel,staff_week, week_dates)
-    write_equpment(ws_equipment,[marine_week,project_week,land_week],week_dates)
-
-    wb.save(output_path)
 
 if __name__ == "__main__":
     main()
