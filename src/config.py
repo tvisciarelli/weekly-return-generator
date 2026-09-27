@@ -4,7 +4,7 @@ from pathlib import Path
 # REPORTING PERIOD
 # =========================================================
 ###INITIAL REPORTING DATE###
-week_start = pd.Timestamp("2027-06-24")
+week_start = pd.Timestamp("2027-06-14")
 week_dates = pd.date_range(start = week_start,
                            periods=7,
                            freq="D")

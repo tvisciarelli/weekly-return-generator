@@ -1,5 +1,4 @@
 # IMPORTS
-
 import pandas as pd
 
 from config import (
@@ -40,8 +39,6 @@ def main():
         sheet_name="General Planning",
         header=None
     )
-
-    
     
     #Extract dates#
     date_row, date_column, dates = find_dates(df)
@@ -92,8 +89,8 @@ def main():
 
     equipment_tables = [marine_week,project_week,land_week]
     
+    #Create Output (Personnel and Plant Return) #
     create_return_file(staff_week,equipment_tables, week_dates)
-
 
 if __name__ == "__main__":
     main()
