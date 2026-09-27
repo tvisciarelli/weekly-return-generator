@@ -6,7 +6,7 @@ from openpyxl.styles import Border, Side, Alignment
 from copy import copy
 
 ###INITIAL REPORTING DATE###
-week_start = pd.Timestamp("2027-01-11")
+week_start = pd.Timestamp("2027-06-24")
 week_dates = pd.date_range(start = week_start,
                            periods=7,
                            freq="D")
@@ -151,7 +151,7 @@ def normalize_status(status):
     return str(status).strip().upper()
 
 """Add Style to Final Personnel Tables"""
-def format_personnel_area(ws,start_row,end_row,start_col,end_col,remarks_column = 13, remarks_merge_column = 14):
+def format_data_area(ws,start_row,end_row,start_col,end_col,remarks_column = 13, remarks_merge_column = 14):
     double_side = Side(style="double")
     dotted_side = Side(style="dotted")
 
@@ -210,8 +210,6 @@ def format_personnel_area(ws,start_row,end_row,start_col,end_col,remarks_column 
     # -----------------------------------
     # Merge Remarks columns
     # -----------------------------------
-
-    
 
     for row in range(start_row, end_row + 1):
         ws.merge_cells(
@@ -330,14 +328,17 @@ def write_personnel(ws,staff_week,week_dates):
                 column=5 + j
             ).value = value
 
- # Apply double-line outline
-    format_personnel_area(
+ # Apply format #
+    format_data_area(
         ws,
         personnel_start_row,
         last_personnel_row,
         personnel_start_column,
         last_personnel_column,
     )
+
+
+
 
 ### EQUIPMENT FUNCTIONS ###
 """Apply common equipment/plant status rules."""
@@ -392,6 +393,66 @@ def process_equipment(df, section_range, titles, week_dates):
     
     return df_equipment
 
+def write_equpment(ws, equipment_tables, week_dates):
+    """Add week"""
+    ws.cell(
+        row=3,
+        column=16
+    ).value = iso.week
+    """Add Date From:"""
+    ws.cell(
+        row=4,
+        column=16
+    ).value = week_start
+    """Add Date Until"""
+    ws.cell(
+        row=5,
+        column=16
+    ).value = week_dates[-1]
+    """Add Reporting Dates"""
+    for i, date in enumerate(week_dates):
+        ws.cell(
+            row=7,
+            column=5+i
+        ).value = date
+    """Add Table With Personnel"""
+    equipment_start_row = 9
+    equipment_start_column = 2
+    #last_equipment_row = equipment_start_row + len(staff_week)-1
+    last_equipment_column = 16
+    empty_row = 1
+    current_row = equipment_start_row
+
+    for i, equipment_df in enumerate(equipment_tables):
+        table_start_row = current_row
+        # Write this table
+        for _, equipment in equipment_df.iterrows():
+            ws.cell(row=current_row, column=2).value = equipment["ID_3"] #Company
+            ws.cell(row=current_row, column=3).value = equipment["ID_1"] #Equipment
+            ws.cell(row=current_row, column=4).value = equipment["ID_2"] #Type
+            ws.cell(row=current_row, column=12).value = equipment["Mob/Demob"] #Mab/Demob Days
+            ws.cell(row=current_row, column=13).value = equipment["Standby Days"] #Standby Days
+            ws.cell(row=current_row, column=14).value = equipment["Working Days"] #Working Days
+
+            for j, date in enumerate(week_dates): #Daily Hours
+                value = equipment[date]
+                if pd.isna(value):
+                    value = None
+
+                ws.cell(
+                    row=current_row,
+                    column=5 + j
+                ).value = value
+
+            current_row += 1
+        
+        table_end_row = current_row - 1
+        # Format this table #
+        format_data_area(ws, table_start_row,table_end_row, equipment_start_column, last_equipment_column,remarks_column = 15, remarks_merge_column = 16)
+        
+        # Leave one blank eow before the next table
+        if i < len(equipment_tables) - 1:
+            current_row +=1
 
 ### MAIN ###
 def main():    
@@ -448,8 +509,10 @@ def main():
     #Write Personnel to Template#
     wb = load_workbook(template_path)
     ws_personnel = wb["Personnel"]
+    ws_equipment = wb["Plant"]
 
     write_personnel(ws_personnel,staff_week, week_dates)
+    write_equpment(ws_equipment,[marine_week,project_week,land_week],week_dates)
 
     wb.save(output_path)
 
