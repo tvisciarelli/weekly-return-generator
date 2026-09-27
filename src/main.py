@@ -1,11 +1,30 @@
 from pathlib import Path
 import pandas as pd
+import shutil
+from openpyxl import load_workbook
+from openpyxl.styles import Border, Side, Alignment
+from copy import copy
 
 ###INITIAL REPORTING DATE###
-week_start = pd.Timestamp("2027-06-14")
+week_start = pd.Timestamp("2027-01-11")
 week_dates = pd.date_range(start = week_start,
                            periods=7,
                            freq="D")
+
+iso = week_start.isocalendar()
+
+#Input File path #
+file_path = Path("data/Staff Planning 2027.xlsx")
+
+#Template File Paht#
+template_path = Path("data/template_return.xlsx")
+
+#Output file#
+output_filename = f"weekly_return_{iso.year}_Wk{iso.week}.xlsx"
+output_path = Path("output")/output_filename
+shutil.copy2(template_path, output_path)
+
+
 
 ### SECTIONS IN THE FILE AND SECTIONS TO PROCESS ###
 section_names = ["Holidays",
@@ -130,6 +149,79 @@ def normalize_status(status):
         return None
     
     return str(status).strip().upper()
+
+"""Add Style to Final Personnel Tables"""
+def format_personnel_area(ws,start_row,end_row,start_col,end_col,remarks_column = 13, remarks_merge_column = 14):
+    double_side = Side(style="double")
+    dotted_side = Side(style="dotted")
+
+    for row in range(start_row, end_row + 1):
+        for col in range(start_col, end_col + 1):
+
+            cell = ws.cell(row=row, column=col)
+
+            # -----------------------------------
+            # Alignment
+            # -----------------------------------
+
+            cell.alignment = copy(
+                cell.alignment
+            )
+            cell.alignment = Alignment(
+                horizontal="center",
+                vertical="center"
+            )
+
+            # -----------------------------------
+            # Borders
+            # -----------------------------------
+
+            left = (
+                double_side
+                if col == start_col
+                else cell.border.left
+            )
+
+            right = (
+                double_side
+                if col == end_col
+                else cell.border.right
+            )
+
+            top = (
+                double_side
+                if row == start_row
+                else dotted_side
+            )
+
+            bottom = (
+                double_side
+                if row == end_row
+                else dotted_side
+            )
+
+            cell.border = Border(
+                left=left,
+                right=right,
+                top=top,
+                bottom=bottom,
+            )
+
+    # -----------------------------------
+    # Merge Remarks columns
+    # -----------------------------------
+
+    
+
+    for row in range(start_row, end_row + 1):
+        ws.merge_cells(
+            start_row=row,
+            start_column=remarks_column,
+            end_row=row,
+            end_column=remarks_merge_column
+        )
+
+
     
 ### STAFF FUNCTIONS ####
 """Apply Staff-specific status rules."""
@@ -190,6 +282,62 @@ def process_staff(df, section_range, titles, week_dates):
     
     return df_staff
 
+"""Function to write personnel table in template"""
+
+def write_personnel(ws,staff_week,week_dates):
+    """Add week"""
+    ws.cell(
+        row=3,
+        column=14
+    ).value = iso.week
+    """Add Date From:"""
+    ws.cell(
+        row=4,
+        column=14
+    ).value = week_start
+    """Add Date Until"""
+    ws.cell(
+        row=5,
+        column=14
+    ).value = week_dates[-1]
+    """Add Reporting Dates"""
+    for i, date in enumerate(week_dates):
+        ws.cell(
+            row=7,
+            column=5+i
+        ).value = date
+    """Add Table With Personnel"""
+    personnel_start_row = 9
+    personnel_start_column = 2
+    last_personnel_row = personnel_start_row + len(staff_week)-1
+    last_personnel_column = 14
+
+    for i, (_, person) in enumerate(staff_week.iterrows()):
+        row = personnel_start_row + i
+        ws.cell(row=row, column=2).value = person["ID_3"] #Company
+        ws.cell(row=row, column=3).value = person["ID_2"] #Name
+        ws.cell(row=row, column=4).value = person["ID_1"] #Role
+        ws.cell(row=row, column=12).value = person["Total Hours"] #Total Hours
+        ws.cell(row=row, column=13).value = person["Remark"] #Remark
+
+        for j, date in enumerate(week_dates): #Daily Hours
+            value = person[date]
+            if pd.isna(value):
+                value = None
+
+            ws.cell(
+                row=row,
+                column=5 + j
+            ).value = value
+
+ # Apply double-line outline
+    format_personnel_area(
+        ws,
+        personnel_start_row,
+        last_personnel_row,
+        personnel_start_column,
+        last_personnel_column,
+    )
 
 ### EQUIPMENT FUNCTIONS ###
 """Apply common equipment/plant status rules."""
@@ -246,10 +394,7 @@ def process_equipment(df, section_range, titles, week_dates):
 
 
 ### MAIN ###
-def main():
-    #File path#
-    file_path = Path("data/20.4045 Staff Planning 2027.xlsx")
-    
+def main():    
     #Load df#
     df = load_planning_sheet(file_path)
     
@@ -300,8 +445,13 @@ def main():
         week_dates
     )
 
-    print(land_week.head())
-    #print(marine_week.columns)
+    #Write Personnel to Template#
+    wb = load_workbook(template_path)
+    ws_personnel = wb["Personnel"]
+
+    write_personnel(ws_personnel,staff_week, week_dates)
+
+    wb.save(output_path)
 
 if __name__ == "__main__":
     main()
