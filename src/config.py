@@ -18,7 +18,7 @@ iso = week_start.isocalendar()
 file_path = Path("data/Staff Planning 2027.xlsx")
 
 #Template File Paht#
-template_path = Path("data/template_return.xlsx")
+template_path = Path("template/template_return.xlsx")
 
 # =========================================================
 # PLANNING SECTIONS

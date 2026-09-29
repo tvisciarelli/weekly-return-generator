@@ -9,7 +9,7 @@ __pycache__/
 .vscode/
 
 # Local input data
-data/
+#data/
 
 # Generated files
 output/
