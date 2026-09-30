@@ -15,6 +15,7 @@ from rules import (
 
 from planning import (
     find_dates,
+    validate_week_dates,
     find_sections,
     find_section_ranges
 )
@@ -66,6 +67,10 @@ def main():
     
     #Extract dates#
     date_row, date_column, dates = find_dates(df)
+
+    #Valudate dates exists
+    if not validate_week_dates(week_dates,dates):
+        return
     
     #Find and extract section ranges#    
     sections = find_sections(df, section_names)

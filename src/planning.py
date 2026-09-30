@@ -19,6 +19,20 @@ def find_dates(df: pd.DataFrame) -> tuple[int, int, list]:
 
     return row, column, dates
 
+def validate_week_dates(week_dates, planning_dates):
+    missing_dates = week_dates[~week_dates.isin(planning_dates)]
+
+    if len(missing_dates) > 0:
+        print("The requested week is not fully available in the planning. \n ")
+        print("Missing dates:")
+        for date in missing_dates:
+            print(date.strftime("%d-%m-%Y"))
+        print(f"\n Planning range {planning_dates[0].strftime("%d-%m-%Y")} " 
+             f"to {planning_dates[-1].strftime("%d-%m-%Y")}")
+        return False
+    return True
+    
+
 """"Find the row position of each known section."""
 def find_sections(df: pd.DataFrame,section_names:list[str]) -> dict[str,int]:
     sections ={}
