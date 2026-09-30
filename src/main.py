@@ -28,12 +28,28 @@ from output import (
     create_return_file
 )
 
+
+# Function to get Week Start and Validation ##
+def get_week_start():
+    while True:
+        date_input = input("Enter the week start date (YYYY-MM-DD): ")
+
+        try:
+            week_start = pd.Timestamp(date_input)
+        except ValueError:
+            print("Invalid date. Please use YYYY-MM-DD")
+            continue
+        if week_start.weekday() != 0:
+            print("The date must be a Monday.")
+            continue
+        
+
+        return week_start
+
 ### MAIN ###
 def main():
     #Request start date
-    week_start = pd.Timestamp(
-        input("Enter the week start date (YYYY-MM-DD): ")
-    )
+    week_start = get_week_start()
 
     week_dates = pd.date_range(
         start=week_start,
