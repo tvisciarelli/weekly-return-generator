@@ -7,13 +7,6 @@ from openpyxl.styles import Border, Side, Alignment
 
 from pathlib import Path
 
-from config import (
-    iso,
-    week_start,
-    template_path
-)
-
-
 ### --------------------------------------
 # ADD STYLE TO TEMPLATE
 # ---------------------------------------
@@ -93,11 +86,12 @@ def format_data_area(ws,start_row,end_row,start_col,end_col,remarks_column = 13,
 """Function to write personnel table in template"""
 
 def write_personnel(ws,staff_week,week_dates):
+    week_start = week_dates[0]
     """Add week"""
     ws.cell(
         row=3,
         column=14
-    ).value = iso.week
+    ).value = week_start.isocalendar().week
     """Add Date From:"""
     ws.cell(
         row=4,
@@ -152,11 +146,12 @@ def write_personnel(ws,staff_week,week_dates):
 # WRITE EQUIPMENT
 ###---------------------------------------
 def write_equpment(ws, equipment_tables, week_dates):
+    week_start = week_dates[0]
     """Add week"""
     ws.cell(
         row=3,
         column=16
-    ).value = iso.week
+    ).value = week_start.isocalendar().week
     """Add Date From:"""
     ws.cell(
         row=4,
@@ -216,9 +211,10 @@ def write_equpment(ws, equipment_tables, week_dates):
 # WRITE FINAL RETURN
 ###---------------------------------------
 """Function to create return file"""
-def create_return_file(staff_week,equipment_tables, week_dates):
+def create_return_file(staff_week,equipment_tables,week_dates,template_path):
+    week_start = week_dates[0]
     # 1. Determine output filename
-    output_filename = f"weekly_return_{iso.year}_Wk{iso.week}.xlsx"
+    output_filename = f"weekly_return_{week_start.isocalendar().year}_Wk{week_start.isocalendar().week}.xlsx"
     output_path = Path("output")/output_filename
     
     # 2. Copy template
@@ -232,7 +228,7 @@ def create_return_file(staff_week,equipment_tables, week_dates):
     ws_equipment = wb["Plant"]
 
     # 5. Write personnel
-    write_personnel(ws_personnel,staff_week, week_dates)
+    write_personnel(ws_personnel,staff_week,week_dates)
     
     # 6. Write equipment
     write_equpment(ws_equipment,equipment_tables,week_dates)

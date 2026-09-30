@@ -2,9 +2,6 @@
 import pandas as pd
 
 from config import (
-    week_start,
-    week_dates,
-    iso,
     file_path,
     template_path,
     section_names,
@@ -32,7 +29,18 @@ from output import (
 )
 
 ### MAIN ###
-def main():    
+def main():
+    #Request start date
+    week_start = pd.Timestamp(
+        input("Enter the week start date (YYYY-MM-DD): ")
+    )
+
+    week_dates = pd.date_range(
+        start=week_start,
+        periods=7,
+        freq="D"
+    )
+
     #Load df#
     df = pd.read_excel(
         file_path,
@@ -90,7 +98,13 @@ def main():
     equipment_tables = [marine_week,project_week,land_week]
     
     #Create Output (Personnel and Plant Return) #
-    create_return_file(staff_week,equipment_tables, week_dates)
+    create_return_file(
+    staff_week=staff_week,
+    equipment_tables=equipment_tables,
+    week_dates=week_dates,
+    template_path=template_path,
+)
+
 
 if __name__ == "__main__":
     main()
