@@ -59,6 +59,11 @@ def main():
     )
 
     #Load df#
+    if not file_path.exists():
+        print(f"Planning file not found: {file_path}")
+        print("Please check the file path in config.py.")
+        return
+
     df = pd.read_excel(
         file_path,
         sheet_name="General Planning",
@@ -72,8 +77,19 @@ def main():
     if not validate_week_dates(week_dates,dates):
         return
     
-    #Find and extract section ranges#    
+    #Find section ranges#    
     sections = find_sections(df, section_names)
+
+    #Check for missing sections in the Plannig Dile
+    missing_sections = [section for section in sections_to_process if section not in sections]
+
+    if missing_sections:
+        print("Required planning section(s) not found:")
+        for section in missing_sections:
+            print(f"- {section}")
+        return
+
+    #Find the ranges convered by each section
     section_ranges = find_section_ranges(sections,df)
 
     #Filter the sections that we want to use:

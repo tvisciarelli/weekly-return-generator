@@ -216,6 +216,12 @@ def create_return_file(staff_week,equipment_tables,week_dates,template_path):
     # 1. Determine output filename
     output_filename = f"weekly_return_{week_start.isocalendar().year}_Wk{week_start.isocalendar().week}.xlsx"
     output_path = Path("output")/output_filename
+
+    if not template_path.exists():
+        print(f"Tempate file not found: {template_path}")
+        return
+
+    output_path.parent.mkdir(parents=True,exist_ok=True)
     
     # 2. Copy template
     shutil.copy2(template_path, output_path)
